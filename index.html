@@ -585,14 +585,18 @@
                 console.log('📊 Live user tracking active - Session:', sessionId);
             }
             
-            // Initialize Privy and UI
-            try {
-                await initializePrivy();
-            } catch (error) {
-                console.error('Privy initialization error:', error);
-            }
+            // Initialize UI and countdown
             updateUI();
             initializeCountdown();
+            
+            // Try to initialize Privy (optional)
+            setTimeout(async () => {
+                try {
+                    await initializePrivy();
+                } catch (error) {
+                    console.log('Privy not available, using direct wallet connection');
+                }
+            }, 1000);
             
             // Check if ethers loads after a brief delay
             setTimeout(() => {
@@ -1485,26 +1489,9 @@
             try {
                 console.log('🔄 Initializing Privy authentication...');
                 
-                // Wait for Privy SDK to load with timeout
-                const privyLoaded = await new Promise((resolve) => {
-                    let attempts = 0;
-                    const maxAttempts = 50; // 5 seconds max
-                    
-                    const checkPrivy = () => {
-                        attempts++;
-                        if (window.Privy) {
-                            resolve(true);
-                        } else if (attempts >= maxAttempts) {
-                            resolve(false);
-                        } else {
-                            setTimeout(checkPrivy, 100);
-                        }
-                    };
-                    checkPrivy();
-                });
-                
-                if (!privyLoaded) {
-                    console.log('📱 Privy SDK failed to load, using direct connection');
+                // Check if Privy is available
+                if (!window.Privy || !window.Privy.PrivyProvider) {
+                    console.log('📱 Privy SDK not available, using direct wallet connection');
                     return false;
                 }
                 
@@ -1512,25 +1499,19 @@
                 const appId = 'client-WY6PdZDym8VHN2rXvPc6s6I';
                 console.log('🔑 Using Privy App ID:', appId);
                 
-                // Initialize Privy client
-                privyClient = new window.Privy.PrivyClient({
+                // Create Privy provider and initialize client
+                const privyProvider = window.Privy.PrivyProvider({
                     appId: appId,
                     config: {
                         loginMethods: ['wallet'],
                         appearance: {
                             theme: 'dark',
-                            accentColor: '#6366f1',
-                            showWalletLoginFirst: true
-                        },
-                        embeddedWallets: {
-                            createOnLogin: 'off'
-                        },
-                        externalWallets: {
-                            coinbaseWallet: {
-                                connectionOptions: 'smartWalletOnly'
-                            }
+                            accentColor: '#6366f1'
                         }
                     }
+                });
+                
+                privyClient = privyProvider
                 });
                 
                 // Set up authentication state listener
@@ -1577,9 +1558,9 @@
             updateUI();
         }
 
-        // Privy-powered wallet connection
+        // Simple wallet connection
         async function directWalletConnect() {
-            console.log('🚀 STARTING PRIVY WALLET CONNECTION');
+            console.log('🚀 STARTING WALLET CONNECTION');
             
             const connectBtn = document.querySelector('.connect-btn');
             if (connectBtn) {
@@ -1588,43 +1569,14 @@
             }
             
             try {
-                // Try Privy first if initialized
-                if (privyInitialized && privyClient) {
-                    console.log('🔐 Using Privy authentication');
-                    
-                    try {
-                        await privyClient.login();
-                        console.log('✅ Privy login initiated');
-                        return; // Privy will handle the rest via onAuthStateChange
-                        
-                    } catch (privyError) {
-                        console.log('⚠️ Privy login failed:', privyError.message || privyError);
-                        // Continue to fallback
-                    }
-                } else {
-                    console.log('⚠️ Privy not initialized, checking initialization...');
-                    
-                    // Try to initialize Privy
-                    const initialized = await initializePrivy();
-                    if (initialized && privyClient) {
-                        console.log('🔐 Privy initialized, attempting login');
-                        try {
-                            await privyClient.login();
-                            return;
-                        } catch (privyError) {
-                            console.log('⚠️ Privy login after init failed:', privyError);
-                        }
-                    }
-                }
-                
-                // Fallback to direct wallet connection or show wallet options
-                console.log('🔄 Using direct wallet connection fallback');
-                
+                // Check for Web3 wallet
                 if (!window.ethereum) {
-                    // Instead of throwing error, show wallet installation/connection options
+                    console.log('❌ No Web3 wallet detected');
                     showWalletOptions();
                     return;
                 }
+                
+                console.log('✅ Web3 wallet detected, requesting connection');
                 
                 const accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
