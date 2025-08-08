@@ -1610,27 +1610,35 @@
                 // Fallback to direct wallet connection
                 console.log('🔄 Using direct wallet connection...');
                 
-                // Check for mobile wallet browser
-                const isMobileWallet = /Trust|TokenPocket|imToken|Rainbow|Coinbase|MetaMask|SafePal/i.test(navigator.userAgent);
+                // Enhanced wallet detection for mobile and desktop
                 const hasEthereum = !!window.ethereum;
+                const isMobileWallet = /Trust|TokenPocket|imToken|Rainbow|Coinbase|MetaMask|SafePal/i.test(navigator.userAgent);
+                const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
                 
-                if (hasEthereum || isMobileWallet) {
+                // Force direct connection attempt first
+                if (hasEthereum) {
+                    console.log('✅ window.ethereum detected, attempting direct connection');
                     await handleDirectConnection();
-                } else {
+                } else if (isMobile && !hasEthereum) {
+                    // Only show instructions if we're on mobile AND no ethereum provider
+                    console.log('📱 Mobile device without ethereum provider detected');
+                    
                     // Reset button and show instructions
                     if (connectBtn) {
                         connectBtn.textContent = 'Connect Wallet';
                         connectBtn.disabled = false;
                     }
                     
-                    // Show mobile-friendly message
-                    const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
-                    if (isMobile) {
-                        alert('Please open this page in your wallet app:\n\n1. Open MetaMask, Trust Wallet, or another wallet app\n2. Go to the browser section\n3. Visit this page again\n4. Then click Connect Wallet');
-                    } else {
-                        if (confirm('No wallet detected. Install MetaMask to continue?')) {
-                            window.open('https://metamask.io/download/', '_blank');
-                        }
+                    alert('Please open this page in your wallet app:\n\n1. Open MetaMask, Trust Wallet, or another wallet app\n2. Go to the browser section\n3. Visit this page again\n4. Then click Connect Wallet');
+                } else {
+                    // Desktop without wallet
+                    if (connectBtn) {
+                        connectBtn.textContent = 'Connect Wallet';
+                        connectBtn.disabled = false;
+                    }
+                    
+                    if (confirm('No wallet detected. Install MetaMask to continue?')) {
+                        window.open('https://metamask.io/download/', '_blank');
                     }
                 }
                 
@@ -1658,30 +1666,50 @@
         async function handleDirectConnection() {
             try {
                 console.log('🔌 Starting direct wallet connection...');
+                console.log('- window.ethereum available:', !!window.ethereum);
+                console.log('- User agent:', navigator.userAgent.substring(0, 100));
                 
                 if (!window.ethereum) {
-                    throw new Error('No wallet detected');
+                    throw new Error('No ethereum provider found');
                 }
                 
-                // Request account connection
-                const accounts = await window.ethereum.request({
-                    method: 'eth_requestAccounts'
-                });
-                
-                if (accounts.length === 0) {
-                    throw new Error('No accounts found');
+                // Request account connection with explicit handling
+                let accounts;
+                try {
+                    accounts = await window.ethereum.request({
+                        method: 'eth_requestAccounts'
+                    });
+                    console.log('✅ Accounts received:', accounts.length);
+                } catch (requestError) {
+                    console.error('Account request failed:', requestError);
+                    if (requestError.code === 4001) {
+                        throw new Error('Connection rejected by user');
+                    } else {
+                        throw new Error('Failed to request accounts: ' + requestError.message);
+                    }
                 }
                 
-                // Create provider with ethers if available
-                if (typeof ethers !== 'undefined') {
-                    provider = new ethers.providers.Web3Provider(window.ethereum);
-                    signer = provider.getSigner();
-                } else {
-                    // Fallback without ethers
-                    provider = window.ethereum;
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('No accounts returned from wallet');
                 }
                 
                 const userAddress = accounts[0];
+                console.log('🔗 User address:', userAddress);
+                
+                // Create provider with ethers if available
+                if (typeof ethers !== 'undefined') {
+                    try {
+                        provider = new ethers.providers.Web3Provider(window.ethereum);
+                        signer = provider.getSigner();
+                        console.log('✅ Ethers provider created');
+                    } catch (ethersError) {
+                        console.log('⚠️ Ethers setup failed, using raw ethereum:', ethersError);
+                        provider = window.ethereum;
+                    }
+                } else {
+                    console.log('⚠️ Ethers not available, using raw ethereum provider');
+                    provider = window.ethereum;
+                }
                 
                 // Set authentication state
                 isAuthenticated = true;
@@ -1690,32 +1718,59 @@
                     id: userAddress
                 };
                 
-                console.log('✅ Wallet connected:', userAddress);
+                console.log('✅ Authentication state set');
                 
                 // Check network and switch to HyperEVM if needed
-                await ensureHyperEVMNetwork();
+                try {
+                    await ensureHyperEVMNetwork();
+                    console.log('✅ Network check completed');
+                } catch (networkError) {
+                    console.log('⚠️ Network switch failed:', networkError);
+                    // Continue anyway - user can manually switch network
+                }
                 
                 // Check eligibility
-                await checkEligibility(userAddress);
+                try {
+                    await checkEligibility(userAddress);
+                    console.log('✅ Eligibility check completed');
+                } catch (eligibilityError) {
+                    console.log('⚠️ Eligibility check failed:', eligibilityError);
+                    // Set as eligible by default if check fails
+                    isEligible = true;
+                }
                 
                 // Update UI
                 updateUI();
+                console.log('✅ UI updated');
                 
                 // Track successful connection
-                window.trackEvent('Wallet Connected', {
-                    address: userAddress.substring(0, 8) + '...',
-                    method: 'direct',
-                    timestamp: new Date().toISOString()
-                });
+                if (window.trackEvent) {
+                    window.trackEvent('Wallet Connected', {
+                        address: userAddress.substring(0, 8) + '...',
+                        method: 'direct',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                
+                console.log('🎉 Wallet connection completed successfully!');
                 
             } catch (error) {
-                console.error('Direct connection failed:', error);
+                console.error('❌ Direct connection failed:', error);
                 
                 // Reset button state
                 const connectBtn = document.querySelector('.connect-btn');
                 if (connectBtn) {
                     connectBtn.textContent = 'Connect Wallet';
                     connectBtn.disabled = false;
+                }
+                
+                // Show user-friendly error
+                if (error.message === 'Connection rejected by user') {
+                    console.log('User cancelled the connection');
+                } else if (error.message.includes('No ethereum provider')) {
+                    alert('Please open this page in your wallet app (MetaMask, Trust Wallet, etc.)');
+                } else {
+                    alert('Connection failed: ' + error.message);
                 }
                 
                 throw error;
