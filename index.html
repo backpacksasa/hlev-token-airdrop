@@ -1005,7 +1005,7 @@
                     <div class="wallet-connect">
                         <h2>Connect Your Wallet</h2>
                         <p>Connect your wallet to check eligibility and claim tokens</p>
-                        <button class="connect-btn" onclick="console.log('Connect button clicked!'); handleLogin();">
+                        <button class="connect-btn" onclick="console.log('Connect button clicked!'); connectWithPrivy();">
                             Connect Wallet
                         </button>
                     </div>
@@ -1610,35 +1610,40 @@
                 // Fallback to direct wallet connection
                 console.log('🔄 Using direct wallet connection...');
                 
-                // Enhanced wallet detection for mobile and desktop
+                // Debug wallet detection
+                console.log('=== WALLET DETECTION DEBUG ===');
+                console.log('window.ethereum:', !!window.ethereum);
+                console.log('window.ethereum type:', typeof window.ethereum);
+                console.log('User agent:', navigator.userAgent);
+                console.log('Is mobile:', /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent));
+                console.log('Available providers:', Object.keys(window).filter(key => key.includes('ethereum') || key.includes('wallet')));
+                
                 const hasEthereum = !!window.ethereum;
-                const isMobileWallet = /Trust|TokenPocket|imToken|Rainbow|Coinbase|MetaMask|SafePal/i.test(navigator.userAgent);
                 const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
                 
-                // Force direct connection attempt first
+                // Always try direct connection first on any platform
                 if (hasEthereum) {
-                    console.log('✅ window.ethereum detected, attempting direct connection');
+                    console.log('✅ Ethereum provider found, attempting direct connection');
                     await handleDirectConnection();
-                } else if (isMobile && !hasEthereum) {
-                    // Only show instructions if we're on mobile AND no ethereum provider
-                    console.log('📱 Mobile device without ethereum provider detected');
-                    
-                    // Reset button and show instructions
-                    if (connectBtn) {
-                        connectBtn.textContent = 'Connect Wallet';
-                        connectBtn.disabled = false;
-                    }
-                    
-                    alert('Please open this page in your wallet app:\n\n1. Open MetaMask, Trust Wallet, or another wallet app\n2. Go to the browser section\n3. Visit this page again\n4. Then click Connect Wallet');
                 } else {
-                    // Desktop without wallet
+                    console.log('❌ No ethereum provider found');
+                    
+                    // Reset button state
                     if (connectBtn) {
                         connectBtn.textContent = 'Connect Wallet';
                         connectBtn.disabled = false;
                     }
                     
-                    if (confirm('No wallet detected. Install MetaMask to continue?')) {
-                        window.open('https://metamask.io/download/', '_blank');
+                    if (isMobile) {
+                        // Mobile without ethereum - show wallet app instructions
+                        console.log('📱 Mobile device without ethereum provider');
+                        alert('Please open this page in your wallet app:\n\n1. Open MetaMask, Trust Wallet, or another wallet app\n2. Go to the browser section\n3. Visit this page again\n4. Then click Connect Wallet');
+                    } else {
+                        // Desktop without wallet
+                        console.log('💻 Desktop without wallet provider');
+                        if (confirm('No wallet detected. Install MetaMask to continue?')) {
+                            window.open('https://metamask.io/download/', '_blank');
+                        }
                     }
                 }
                 
