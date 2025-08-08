@@ -1634,13 +1634,7 @@
                 }
             }
             
-            // Method 3: Demo connection for testing
-            if (!connected) {
-                console.log('Trying Method 3: Demo connection');
-                walletAddress = '0x1234567890123456789012345678901234567890';
-                connected = true;
-                console.log('✅ Method 3 (demo) success');
-            }
+            // No demo fallback - we need real wallet connection
             
             if (connected && walletAddress) {
                 // Set authentication state
@@ -1665,7 +1659,19 @@
                 }
                 
                 console.log('❌ All connection methods failed');
-                alert('Could not connect to wallet. Available providers: ' + providers.join(', '));
+                console.log('Available providers:', providers);
+                console.log('Please check browser console for detailed debug info');
+                
+                const debugInfo = `
+Debug Info:
+- URL: ${window.location.href}
+- User Agent: ${navigator.userAgent}
+- Providers found: ${providers.join(', ') || 'None'}
+- window.ethereum: ${!!window.ethereum}
+- window.web3: ${!!window.web3}
+`;
+                
+                alert('Wallet connection failed.' + debugInfo);
             }
         }
 
