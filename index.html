@@ -7,6 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Ethers.js from unpkg CDN -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <!-- Privy SDK -->
+    <script src="https://unpkg.com/@privy-io/react-auth@latest/dist/index.js"></script>
     <!-- Vercel Analytics - Universal Integration -->
     <script type="module">
         // Import Vercel Analytics
@@ -579,7 +581,8 @@
                 console.log('📊 Live user tracking active - Session:', sessionId);
             }
             
-            // Initialize UI immediately
+            // Initialize Privy and UI
+            await initializePrivy();
             updateUI();
             initializeCountdown();
             
@@ -600,6 +603,11 @@
         let hasClaimed = false;
         let provider = null;
         let signer = null;
+        let privyInstance = null;
+        
+        // Privy configuration
+        const PRIVY_APP_ID = '2TZrCRYHR5Whjr3qrss71ZgnbHhbu26Y1HB878ZXPV5PGKCvtVjiP7qT769ssUgnGLp9xmKsDsit5wMxedHhyXHz';
+        const PRIVY_CLIENT_ID = 'cme2owo5g015fjo0bjh9ccwhq';
         
         // Contract configuration - using treasury wallet address as placeholder
         const HLEV_CONTRACT_ADDRESS = '0xd6e7bf33a21b56d5927bbf0101fe45ff92ecf9ba'; // Will be replaced with actual contract
@@ -1446,21 +1454,97 @@
 
 
 
-        // Handle logout
-        async function handleLogout() {
+        // Privy Authentication Functions
+        async function initializePrivy() {
             try {
+                // Initialize Privy with your app configuration
+                if (typeof window.PrivyClient !== 'undefined') {
+                    privyInstance = new window.PrivyClient(PRIVY_APP_ID, {
+                        supportedChains: [{
+                            id: 999,
+                            name: 'HyperEVM',
+                            network: 'hyperliquid',
+                            nativeCurrency: { name: 'HYPE', symbol: 'HYPE', decimals: 18 },
+                            rpcUrls: { default: { http: ['https://rpc.hyperliquid.xyz/evm'] } }
+                        }]
+                    });
+                    
+                    // Listen for auth state changes
+                    privyInstance.onAuthStateChange((user, isAuthenticated) => {
+                        handlePrivyAuthChange(user, isAuthenticated);
+                    });
+                    
+                    console.log('✅ Privy initialized successfully');
+                } else {
+                    console.log('📱 Privy SDK not available, using fallback wallet connection');
+                }
+            } catch (error) {
+                console.error('Privy initialization failed:', error);
+                console.log('📱 Using fallback wallet connection');
+            }
+        }
+
+        // Handle Privy authentication state changes
+        function handlePrivyAuthChange(privyUser, authenticated) {
+            isAuthenticated = authenticated;
+            user = privyUser;
+            
+            if (authenticated && privyUser) {
+                console.log('🔐 Authenticated with Privy:', privyUser.id);
+                // Get wallet from Privy user
+                const wallet = privyUser.linkedAccounts?.find(account => account.type === 'wallet');
+                if (wallet) {
+                    provider = privyInstance.getEthereumProvider();
+                    checkEligibility(wallet.address);
+                }
+            } else {
                 isAuthenticated = false;
                 user = null;
-                isEligible = null;
-                hasClaimed = false;
-                console.log('Disconnected from wallet');
-                updateUI();
+                provider = null;
+                signer = null;
+            }
+            updateUI();
+        }
+
+        // Privy Connect Wallet
+        async function connectWithPrivy() {
+            try {
+                if (privyInstance) {
+                    await privyInstance.login();
+                    window.trackEvent('Wallet Connection', {
+                        method: 'privy',
+                        timestamp: new Date().toISOString()
+                    });
+                } else {
+                    // Fallback to direct wallet connection
+                    await connectWallet();
+                }
+            } catch (error) {
+                console.error('Privy connection failed:', error);
+                // Fallback to direct wallet connection
+                await connectWallet();
+            }
+        }
+
+        // Enhanced logout with Privy support
+        async function handleLogout() {
+            try {
+                if (privyInstance && isAuthenticated) {
+                    await privyInstance.logout();
+                } else {
+                    isAuthenticated = false;
+                    user = null;
+                    isEligible = null;
+                    hasClaimed = false;
+                    console.log('Disconnected from wallet');
+                    updateUI();
+                }
             } catch (error) {
                 console.error('Logout failed:', error);
             }
         }
 
-        // Initialize app - removed duplicate initialization
+        // Initialize app with Privy support
     </script>
 </body>
 </html>
