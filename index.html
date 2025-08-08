@@ -1005,7 +1005,7 @@
                     <div class="wallet-connect">
                         <h2>Connect Your Wallet</h2>
                         <p>Connect your wallet to check eligibility and claim tokens</p>
-                        <button class="connect-btn" onclick="console.log('Connect button clicked!'); connectWithPrivy();">
+                        <button class="connect-btn" onclick="console.log('Connect button clicked!'); directWalletConnect();">
                             Connect Wallet
                         </button>
                     </div>
@@ -1571,98 +1571,90 @@
             updateUI();
         }
 
-        // Enhanced Connect Wallet with Privy integration
-        async function connectWithPrivy() {
+        // Simple direct wallet connection - no complex logic
+        async function directWalletConnect() {
+            console.log('🚀 DIRECT WALLET CONNECTION ATTEMPT');
+            
+            // Show connecting state
+            const connectBtn = document.querySelector('.connect-btn');
+            if (connectBtn) {
+                connectBtn.textContent = 'Connecting...';
+                connectBtn.disabled = true;
+            }
+            
             try {
-                console.log('🔄 Starting wallet connection process...');
+                // Step 1: Check if we have ethereum provider
+                if (!window.ethereum) {
+                    throw new Error('NO_ETHEREUM_PROVIDER');
+                }
                 
-                // Track connection attempt
-                window.trackEvent('Wallet Connection Attempt', {
-                    method: 'privy',
-                    timestamp: new Date().toISOString()
+                console.log('✅ Ethereum provider detected');
+                
+                // Step 2: Request accounts
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
                 });
                 
-                // Show connecting state
-                const connectBtn = document.querySelector('.connect-btn');
-                if (connectBtn) {
-                    connectBtn.textContent = 'Connecting...';
-                    connectBtn.disabled = true;
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('NO_ACCOUNTS');
                 }
                 
-                // Try Privy connection first if initialized
-                if (privyInitialized && privyClient) {
-                    console.log('🔐 Attempting Privy login...');
-                    
-                    try {
-                        // Use Privy login method
-                        await privyClient.login();
-                        console.log('✅ Privy login initiated');
-                        return; // Privy will handle the rest via onAuthStateChange
-                        
-                    } catch (privyError) {
-                        console.log('⚠️ Privy login failed:', privyError.message || privyError);
-                        // Continue to fallback
-                    }
-                } else {
-                    console.log('⚠️ Privy not available, using direct connection');
+                const walletAddress = accounts[0];
+                console.log('✅ Wallet connected:', walletAddress);
+                
+                // Step 3: Set up provider if ethers is available
+                if (typeof ethers !== 'undefined') {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    console.log('✅ Ethers provider created');
                 }
                 
-                // Fallback to direct wallet connection
-                console.log('🔄 Using direct wallet connection...');
+                // Step 4: Set authentication state
+                isAuthenticated = true;
+                user = {
+                    wallet: { address: walletAddress },
+                    id: walletAddress
+                };
                 
-                // Debug wallet detection
-                console.log('=== WALLET DETECTION DEBUG ===');
-                console.log('window.ethereum:', !!window.ethereum);
-                console.log('window.ethereum type:', typeof window.ethereum);
-                console.log('User agent:', navigator.userAgent);
-                console.log('Is mobile:', /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent));
-                console.log('Available providers:', Object.keys(window).filter(key => key.includes('ethereum') || key.includes('wallet')));
-                
-                const hasEthereum = !!window.ethereum;
-                const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
-                
-                // Always try direct connection first on any platform
-                if (hasEthereum) {
-                    console.log('✅ Ethereum provider found, attempting direct connection');
-                    await handleDirectConnection();
-                } else {
-                    console.log('❌ No ethereum provider found');
-                    
-                    // Reset button state
-                    if (connectBtn) {
-                        connectBtn.textContent = 'Connect Wallet';
-                        connectBtn.disabled = false;
+                // Step 5: Check network (switch if needed)
+                try {
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    if (chainId !== '0x3E7') { // Not HyperEVM
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x3E7' }]
+                        });
                     }
-                    
-                    if (isMobile) {
-                        // Mobile without ethereum - show wallet app instructions
-                        console.log('📱 Mobile device without ethereum provider');
-                        alert('Please open this page in your wallet app:\n\n1. Open MetaMask, Trust Wallet, or another wallet app\n2. Go to the browser section\n3. Visit this page again\n4. Then click Connect Wallet');
-                    } else {
-                        // Desktop without wallet
-                        console.log('💻 Desktop without wallet provider');
-                        if (confirm('No wallet detected. Install MetaMask to continue?')) {
-                            window.open('https://metamask.io/download/', '_blank');
-                        }
-                    }
+                } catch (networkError) {
+                    console.log('Network switch failed, continuing anyway:', networkError);
                 }
+                
+                // Step 6: Check eligibility 
+                isEligible = true; // For now, assume eligible
+                
+                // Step 7: Update UI
+                updateUI();
+                
+                console.log('🎉 Wallet connection successful!');
                 
             } catch (error) {
-                console.error('Connection process failed:', error);
+                console.error('❌ Wallet connection failed:', error);
                 
-                // Reset button state
-                const connectBtn = document.querySelector('.connect-btn');
+                // Reset button
                 if (connectBtn) {
                     connectBtn.textContent = 'Connect Wallet';
                     connectBtn.disabled = false;
                 }
                 
-                // Show user-friendly error
-                const errorMsg = error.message || 'Unknown error occurred';
-                if (errorMsg.includes('User rejected')) {
-                    console.log('User cancelled connection');
+                // Handle specific errors
+                if (error.message === 'NO_ETHEREUM_PROVIDER') {
+                    alert('Please open this page in your wallet app (MetaMask, Trust Wallet, etc.)');
+                } else if (error.message === 'NO_ACCOUNTS') {
+                    alert('No wallet accounts found. Please check your wallet.');
+                } else if (error.code === 4001) {
+                    console.log('User rejected connection');
                 } else {
-                    alert('Connection failed: ' + errorMsg);
+                    alert('Connection failed: ' + (error.message || 'Unknown error'));
                 }
             }
         }
