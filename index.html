@@ -9,6 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Ethers.js -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <!-- Web3Modal for multi-wallet support -->
+    <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+    <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
     
     <style>
         * {
@@ -350,9 +353,38 @@
             console.log('✅ Countdown timer started');
         }
 
-        // Connect wallet function
+        // Initialize Web3Modal with multiple wallet support
+        let web3Modal = null;
+
+        function initWeb3Modal() {
+            const providerOptions = {
+                walletconnect: {
+                    package: WalletConnectProvider,
+                    options: {
+                        infuraId: "15efa637fa42d4d6410255addb610b96"
+                    }
+                }
+            };
+
+            web3Modal = new Web3Modal({
+                network: "mainnet",
+                cacheProvider: true,
+                providerOptions,
+                theme: {
+                    background: "rgb(26, 26, 46)",
+                    main: "rgb(255, 255, 255)",
+                    secondary: "rgb(160, 160, 184)",
+                    border: "rgba(255, 255, 255, 0.1)",
+                    hover: "rgba(255, 255, 255, 0.05)"
+                }
+            });
+
+            console.log('✅ Web3Modal initialized with multi-wallet support');
+        }
+
+        // Connect wallet function with multi-wallet selection
         async function connectWallet() {
-            console.log('🔌 Starting wallet connection');
+            console.log('🔌 Starting multi-wallet connection');
             
             const button = document.querySelector('.connect-btn');
             if (button) {
@@ -361,29 +393,23 @@
             }
             
             try {
-                if (!window.ethereum) {
-                    throw new Error('No wallet detected. Please install MetaMask.');
-                }
+                // Show multi-wallet selection modal
+                const web3Provider = await web3Modal.connect();
+                console.log('✅ Wallet provider selected');
 
-                console.log('✅ Web3 provider detected');
+                // Create ethers provider from selected wallet
+                provider = new ethers.providers.Web3Provider(web3Provider);
+                signer = provider.getSigner();
                 
-                // Request account connection
-                console.log('📱 Requesting wallet connection...');
-                const accounts = await window.ethereum.request({
-                    method: 'eth_requestAccounts'
-                });
-
+                // Get accounts
+                const accounts = await provider.listAccounts();
                 console.log('Accounts received:', accounts);
 
                 if (!accounts || accounts.length === 0) {
                     throw new Error('No accounts found in wallet');
                 }
 
-                // Create ethers provider
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                signer = provider.getSigner();
                 const address = accounts[0];
-
                 console.log('🔗 Connected to address:', address);
 
                 // Switch to HyperEVM network
@@ -399,7 +425,7 @@
                 // Update UI
                 updateUI();
                 
-                console.log('✅ Wallet connected successfully:', address);
+                console.log('✅ Multi-wallet connected successfully:', address);
                 
             } catch (error) {
                 console.error('❌ Connection failed:', error);
@@ -414,6 +440,8 @@
                     alert('You cancelled the wallet connection.');
                 } else if (error.code === -32002) {
                     alert('Wallet connection request is already pending. Please check your wallet.');
+                } else if (error.message && error.message.includes('User closed modal')) {
+                    console.log('User closed wallet selection modal');
                 } else {
                     alert('Connection failed: ' + (error.message || 'Unknown error'));
                 }
@@ -556,7 +584,11 @@
         }
 
         // Disconnect wallet
-        function disconnect() {
+        async function disconnect() {
+            if (web3Modal) {
+                await web3Modal.clearCachedProvider();
+            }
+            
             isAuthenticated = false;
             user = null;
             isEligible = null;
@@ -596,6 +628,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('HLEV Airdrop app loaded');
             startCountdown();
+            initWeb3Modal();
             updateUI();
         });
     </script>
