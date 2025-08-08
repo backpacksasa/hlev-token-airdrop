@@ -8,7 +8,7 @@
     <!-- Ethers.js from unpkg CDN -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <!-- Privy Web SDK - Direct Integration -->
-    <script src="https://auth.privy.io/latest/privy.umd.js"></script>
+    <script src="https://unpkg.com/@privy-io/js@1.12.0/dist/index.umd.js"></script>
     <!-- Vercel Analytics - Universal Integration -->
     <script type="module">
         // Import Vercel Analytics
@@ -1494,8 +1494,8 @@
                 const appId = 'client-WY6PdZDym8VHN2rXvPc6s6I';
                 console.log('🔑 Using Privy App ID:', appId);
                 
-                // Initialize Privy with your credentials
-                privyClient = window.Privy({
+                // Initialize Privy client
+                privyClient = new window.Privy.PrivyClient({
                     appId: appId,
                     config: {
                         loginMethods: ['wallet'],
@@ -1511,23 +1511,7 @@
                             coinbaseWallet: {
                                 connectionOptions: 'smartWalletOnly'
                             }
-                        },
-                        supportedChains: [{
-                            id: 999,
-                            name: 'HyperEVM',
-                            network: 'hyperliquid',
-                            nativeCurrency: {
-                                name: 'HYPE',
-                                symbol: 'HYPE',
-                                decimals: 18
-                            },
-                            rpcUrls: {
-                                default: { http: ['https://rpc.hyperliquid.xyz/evm'] }
-                            },
-                            blockExplorers: {
-                                default: { name: 'HyperEVM Explorer', url: 'https://explorer.hyperliquid.xyz' }
-                            }
-                        }]
+                        }
                     }
                 });
                 
@@ -1575,9 +1559,9 @@
             updateUI();
         }
 
-        // Simple wallet connection that actually works
+        // Privy-powered wallet connection
         async function directWalletConnect() {
-            console.log('🚀 CONNECTING WALLET');
+            console.log('🚀 STARTING PRIVY WALLET CONNECTION');
             
             const connectBtn = document.querySelector('.connect-btn');
             if (connectBtn) {
@@ -1586,12 +1570,42 @@
             }
             
             try {
-                // Check if we're in a wallet browser
+                // Try Privy first if initialized
+                if (privyInitialized && privyClient) {
+                    console.log('🔐 Using Privy authentication');
+                    
+                    try {
+                        await privyClient.login();
+                        console.log('✅ Privy login initiated');
+                        return; // Privy will handle the rest via onAuthStateChange
+                        
+                    } catch (privyError) {
+                        console.log('⚠️ Privy login failed:', privyError.message || privyError);
+                        // Continue to fallback
+                    }
+                } else {
+                    console.log('⚠️ Privy not initialized, checking initialization...');
+                    
+                    // Try to initialize Privy
+                    const initialized = await initializePrivy();
+                    if (initialized && privyClient) {
+                        console.log('🔐 Privy initialized, attempting login');
+                        try {
+                            await privyClient.login();
+                            return;
+                        } catch (privyError) {
+                            console.log('⚠️ Privy login after init failed:', privyError);
+                        }
+                    }
+                }
+                
+                // Fallback to direct wallet connection
+                console.log('🔄 Using direct wallet connection fallback');
+                
                 if (!window.ethereum) {
                     throw new Error('No wallet detected. Please use MetaMask, Trust Wallet, or another Web3 wallet.');
                 }
                 
-                // Request wallet connection
                 const accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
                 });
@@ -1607,34 +1621,8 @@
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 
-                // Switch to HyperEVM network if needed
-                try {
-                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                    if (chainId !== '0x3E7') { // 999 in hex
-                        await window.ethereum.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0x3E7' }]
-                        });
-                    }
-                } catch (networkError) {
-                    if (networkError.code === 4902) {
-                        // Network not added, add it
-                        await window.ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [{
-                                chainId: '0x3E7',
-                                chainName: 'HyperEVM',
-                                nativeCurrency: {
-                                    name: 'HYPE',
-                                    symbol: 'HYPE',
-                                    decimals: 18
-                                },
-                                rpcUrls: ['https://rpc.hyperliquid.xyz/evm'],
-                                blockExplorerUrls: ['https://explorer.hyperliquid.xyz']
-                            }]
-                        });
-                    }
-                }
+                // Switch to HyperEVM network
+                await switchToHyperEVM();
                 
                 // Set authentication state
                 isAuthenticated = true;
@@ -1671,6 +1659,37 @@
                 }
                 
                 alert(message);
+            }
+        }
+        
+        // Switch to HyperEVM network
+        async function switchToHyperEVM() {
+            try {
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                if (chainId !== '0x3E7') { // 999 in hex
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0x3E7' }]
+                    });
+                }
+            } catch (networkError) {
+                if (networkError.code === 4902) {
+                    // Network not added, add it
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0x3E7',
+                            chainName: 'HyperEVM',
+                            nativeCurrency: {
+                                name: 'HYPE',
+                                symbol: 'HYPE',
+                                decimals: 18
+                            },
+                            rpcUrls: ['https://rpc.hyperliquid.xyz/evm'],
+                            blockExplorerUrls: ['https://explorer.hyperliquid.xyz']
+                        }]
+                    });
+                }
             }
         }
         
