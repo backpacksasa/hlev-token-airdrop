@@ -367,24 +367,40 @@
         async function connectWallet() {
             console.log('🔌 Starting wallet connection');
             
+            // Show button feedback immediately
+            const button = document.querySelector('.connect-btn');
+            if (button) {
+                button.textContent = 'Connecting...';
+                button.disabled = true;
+            }
+            
             try {
+                // Check for Web3 providers
                 if (!window.ethereum) {
-                    alert('Please install MetaMask or use a Web3-enabled browser');
+                    alert('No wallet detected. Please install MetaMask or use a Web3 wallet browser.');
                     return;
                 }
 
+                console.log('✅ Web3 provider detected');
+                
+                // Request account connection - this should trigger wallet popup
+                console.log('📱 Requesting wallet connection...');
                 const accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
                 });
 
-                if (accounts.length === 0) {
-                    alert('No accounts found');
-                    return;
+                console.log('Accounts received:', accounts);
+
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('No accounts found in wallet');
                 }
 
+                // Create ethers provider
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 const address = accounts[0];
+
+                console.log('🔗 Connected to address:', address);
 
                 // Switch to HyperEVM network
                 await switchToHyperEVM();
@@ -399,10 +415,25 @@
                 // Update UI
                 updateUI();
                 
-                console.log('✅ Wallet connected:', address);
+                console.log('✅ Wallet connected successfully:', address);
+                
             } catch (error) {
-                console.error('Connection failed:', error);
-                alert('Connection failed: ' + error.message);
+                console.error('❌ Connection failed:', error);
+                
+                // Reset button
+                if (button) {
+                    button.textContent = 'Connect Wallet';
+                    button.disabled = false;
+                }
+                
+                // User-friendly error message
+                if (error.code === 4001) {
+                    alert('You cancelled the wallet connection.');
+                } else if (error.code === -32002) {
+                    alert('Wallet connection request is already pending. Please check your wallet.');
+                } else {
+                    alert('Connection failed: ' + (error.message || 'Unknown error'));
+                }
             }
         }
 
