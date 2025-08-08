@@ -563,9 +563,6 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('HLEV Airdrop app loaded');
             
-            // Start countdown timer immediately
-            initializeCountdown();
-            
             // Enhanced page load tracking
             if (window.trackEvent) {
                 window.trackEvent('HLEV Airdrop Loaded', {
@@ -585,7 +582,7 @@
                 console.log('📊 Live user tracking active - Session:', sessionId);
             }
             
-            // Initialize UI and countdown
+            // Initialize UI and countdown - only once
             updateUI();
             initializeCountdown();
             
