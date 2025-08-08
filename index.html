@@ -1617,11 +1617,13 @@
                     }
                 }
                 
-                // Fallback to direct wallet connection
+                // Fallback to direct wallet connection or show wallet options
                 console.log('🔄 Using direct wallet connection fallback');
                 
                 if (!window.ethereum) {
-                    throw new Error('No wallet detected. Please use MetaMask, Trust Wallet, or another Web3 wallet.');
+                    // Instead of throwing error, show wallet installation/connection options
+                    showWalletOptions();
+                    return;
                 }
                 
                 const accounts = await window.ethereum.request({
@@ -1671,7 +1673,9 @@
                 if (error.code === 4001) {
                     message = 'You rejected the connection request.';
                 } else if (error.message.includes('No wallet detected')) {
-                    message = 'Please open this page in a wallet app (MetaMask, Trust Wallet, etc.)';
+                    // Show wallet options instead of generic error
+                    showWalletOptions();
+                    return;
                 } else {
                     message += error.message;
                 }
@@ -1709,6 +1713,98 @@
                     });
                 }
             }
+        }
+        
+        // Show wallet installation/connection options
+        function showWalletOptions() {
+            const connectBtn = document.querySelector('.connect-btn');
+            if (connectBtn) {
+                connectBtn.textContent = 'Connect Wallet';
+                connectBtn.disabled = false;
+            }
+            
+            // Create modal with wallet options
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: #1a1a2e;
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                    border: 1px solid #333;
+                ">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Connect Your Wallet</h3>
+                    <p style="color: #a0a0b8; margin-bottom: 2rem;">Choose how to connect your wallet:</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <button onclick="installMetaMask()" style="
+                            background: linear-gradient(135deg, #f6851b, #f6851b);
+                            color: white;
+                            border: none;
+                            padding: 1rem;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-weight: 600;
+                        ">Install MetaMask Extension</button>
+                        
+                        <button onclick="openInWalletApp()" style="
+                            background: linear-gradient(135deg, #667eea, #764ba2);
+                            color: white;
+                            border: none;
+                            padding: 1rem;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-weight: 600;
+                        ">Open in Mobile Wallet</button>
+                        
+                        <button onclick="closeWalletModal()" style="
+                            background: transparent;
+                            color: #a0a0b8;
+                            border: 1px solid #333;
+                            padding: 0.5rem;
+                            border-radius: 8px;
+                            cursor: pointer;
+                        ">Cancel</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        // Install MetaMask
+        function installMetaMask() {
+            window.open('https://metamask.io/download/', '_blank');
+            closeWalletModal();
+        }
+        
+        // Open in mobile wallet
+        function openInWalletApp() {
+            const currentUrl = window.location.href;
+            // Try MetaMask mobile deep link
+            window.open(`https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`, '_blank');
+            closeWalletModal();
+        }
+        
+        // Close wallet modal
+        function closeWalletModal() {
+            const modal = document.querySelector('div[style*="position: fixed"]');
+            if (modal) modal.remove();
         }
         
         // Check HYPE balance for eligibility
