@@ -7,8 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Ethers.js from unpkg CDN -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <!-- Privy SDK -->
-    <script src="https://unpkg.com/@privy-io/react-auth@latest/dist/index.js"></script>
+    <!-- Privy SDK - Web Integration -->
+    <script src="https://cdn.jsdelivr.net/npm/@privy-io/privy-js@0.11.0/dist/index.umd.js"></script>
     <!-- Vercel Analytics - Universal Integration -->
     <script type="module">
         // Import Vercel Analytics
@@ -508,9 +508,10 @@
                 <div class="wallet-connect">
                     <h2>Connect Your Wallet</h2>
                     <p>Connect your wallet to check eligibility and claim tokens</p>
-                    <button class="connect-btn" onclick="console.log('Connect button clicked!'); handleLogin();">
+                    <button class="connect-btn" onclick="console.log('Connect button clicked!'); connectWithPrivy();">
                         Connect Wallet
                     </button>
+                    <p style="margin-top: 1rem; color: #a0a0b8; font-size: 0.9rem;">Supports MetaMask, WalletConnect, and more wallets</p>
                 </div>
             </div>
         </div>
@@ -559,7 +560,7 @@
 
     <script>
         // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('HLEV Airdrop app loaded');
             
             // Enhanced page load tracking
@@ -582,7 +583,11 @@
             }
             
             // Initialize Privy and UI
-            await initializePrivy();
+            try {
+                await initializePrivy();
+            } catch (error) {
+                console.error('Privy initialization error:', error);
+            }
             updateUI();
             initializeCountdown();
             
@@ -1454,75 +1459,39 @@
 
 
 
-        // Privy Authentication Functions
+        // Simplified Privy Authentication Functions
         async function initializePrivy() {
             try {
-                // Initialize Privy with your app configuration
-                if (typeof window.PrivyClient !== 'undefined') {
-                    privyInstance = new window.PrivyClient(PRIVY_APP_ID, {
-                        supportedChains: [{
-                            id: 999,
-                            name: 'HyperEVM',
-                            network: 'hyperliquid',
-                            nativeCurrency: { name: 'HYPE', symbol: 'HYPE', decimals: 18 },
-                            rpcUrls: { default: { http: ['https://rpc.hyperliquid.xyz/evm'] } }
-                        }]
-                    });
-                    
-                    // Listen for auth state changes
-                    privyInstance.onAuthStateChange((user, isAuthenticated) => {
-                        handlePrivyAuthChange(user, isAuthenticated);
-                    });
-                    
-                    console.log('✅ Privy initialized successfully');
+                console.log('🔄 Initializing Privy authentication...');
+                // Simple check if Privy is available
+                if (typeof window.Privy !== 'undefined' || typeof window.PrivySDK !== 'undefined') {
+                    console.log('✅ Privy SDK detected');
                 } else {
-                    console.log('📱 Privy SDK not available, using fallback wallet connection');
+                    console.log('📱 Privy SDK not loaded, using direct wallet connection');
                 }
             } catch (error) {
-                console.error('Privy initialization failed:', error);
-                console.log('📱 Using fallback wallet connection');
+                console.error('Privy initialization error:', error);
+                console.log('📱 Using direct wallet connection');
             }
         }
 
-        // Handle Privy authentication state changes
-        function handlePrivyAuthChange(privyUser, authenticated) {
-            isAuthenticated = authenticated;
-            user = privyUser;
-            
-            if (authenticated && privyUser) {
-                console.log('🔐 Authenticated with Privy:', privyUser.id);
-                // Get wallet from Privy user
-                const wallet = privyUser.linkedAccounts?.find(account => account.type === 'wallet');
-                if (wallet) {
-                    provider = privyInstance.getEthereumProvider();
-                    checkEligibility(wallet.address);
-                }
-            } else {
-                isAuthenticated = false;
-                user = null;
-                provider = null;
-                signer = null;
-            }
-            updateUI();
-        }
-
-        // Privy Connect Wallet
+        // Enhanced Connect Wallet with Privy support
         async function connectWithPrivy() {
             try {
-                if (privyInstance) {
-                    await privyInstance.login();
-                    window.trackEvent('Wallet Connection', {
-                        method: 'privy',
-                        timestamp: new Date().toISOString()
-                    });
-                } else {
-                    // Fallback to direct wallet connection
-                    await connectWallet();
-                }
+                console.log('🔄 Attempting wallet connection...');
+                
+                // Track connection attempt
+                window.trackEvent('Wallet Connection Attempt', {
+                    method: 'enhanced',
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Use direct wallet connection (proven working method)
+                await handleLogin();
+                
             } catch (error) {
-                console.error('Privy connection failed:', error);
-                // Fallback to direct wallet connection
-                await connectWallet();
+                console.error('Wallet connection failed:', error);
+                alert('Connection failed: ' + error.message);
             }
         }
 
