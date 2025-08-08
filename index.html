@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Ethers.js -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://unpkg.com/@web3modal/standalone@3.0.0"></script>
     
     <style>
         * {
@@ -364,46 +365,77 @@
             console.log('✅ Countdown timer started');
         }
 
-        // Test function to verify JavaScript is working
-        function testClick() {
-            console.log('🧪 Test click working!');
-            alert('JavaScript is working! Click functions are responsive.');
+        // Web3Modal Configuration (Better than Privy for vanilla JS)
+        let web3modal = null;
+        let provider = null;
+        let signer = null;
+
+        // Initialize Web3Modal
+        function initializeWeb3Modal() {
+            try {
+                if (typeof Web3Modal !== 'undefined') {
+                    web3modal = new Web3Modal.Web3Modal({
+                        projectId: '15efa637fa42d4d6410255addb610b96', // Your existing Reown project ID
+                        chains: [
+                            {
+                                chainId: 999,
+                                name: 'HyperEVM',
+                                currency: 'HYPE',
+                                rpcUrl: 'https://rpc.hyperliquid.xyz/evm',
+                                explorerUrl: 'https://explorer.hyperliquid.xyz'
+                            }
+                        ],
+                        theme: 'dark',
+                        themeVariables: {
+                            '--w3m-color-mix': '#6366f1',
+                            '--w3m-accent-color': '#6366f1'
+                        }
+                    });
+                    console.log('✅ Web3Modal initialized successfully');
+                } else {
+                    console.log('⚠️ Web3Modal not loaded, using direct Web3');
+                }
+            } catch (error) {
+                console.error('❌ Web3Modal initialization failed:', error);
+            }
         }
 
         // Connect wallet function
         async function connectWallet() {
             console.log('🔌 Starting wallet connection');
             
-            // Show button feedback immediately
-            const button = document.querySelector('.connect-btn');
+            const button = document.querySelector('.connect-btn:nth-child(2)');
             if (button) {
                 button.textContent = 'Connecting...';
                 button.disabled = true;
             }
             
             try {
-                // Check for Web3 providers
-                if (!window.ethereum) {
-                    alert('No wallet detected. Please install MetaMask or use a Web3 wallet browser.');
-                    return;
-                }
-
-                console.log('✅ Web3 provider detected');
+                let accounts = [];
                 
-                // Request account connection - this should trigger wallet popup
-                console.log('📱 Requesting wallet connection...');
-                const accounts = await window.ethereum.request({
-                    method: 'eth_requestAccounts'
-                });
+                // Try Web3Modal first (provides nice UI)
+                if (web3modal) {
+                    console.log('🔐 Using Web3Modal');
+                    const walletProvider = await web3modal.connect();
+                    provider = new ethers.providers.Web3Provider(walletProvider);
+                    
+                    accounts = await provider.send('eth_requestAccounts', []);
+                } else {
+                    // Fallback to direct MetaMask connection
+                    console.log('🔄 Using direct MetaMask connection');
+                    
+                    if (!window.ethereum) {
+                        throw new Error('No wallet detected. Please install MetaMask or use a Web3 wallet browser.');
+                    }
 
-                console.log('Accounts received:', accounts);
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    accounts = await provider.send('eth_requestAccounts', []);
+                }
 
                 if (!accounts || accounts.length === 0) {
                     throw new Error('No accounts found in wallet');
                 }
 
-                // Create ethers provider
-                provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 const address = accounts[0];
 
@@ -427,13 +459,12 @@
             } catch (error) {
                 console.error('❌ Connection failed:', error);
                 
-                // Reset button
                 if (button) {
                     button.textContent = 'Connect Wallet';
                     button.disabled = false;
                 }
                 
-                // User-friendly error message
+                // User-friendly error messages
                 if (error.code === 4001) {
                     alert('You cancelled the wallet connection.');
                 } else if (error.code === -32002) {
@@ -602,6 +633,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('HLEV Airdrop app loaded');
             initializeCountdown();
+            initializeWeb3Modal();
             updateUI();
         });
     </script>
