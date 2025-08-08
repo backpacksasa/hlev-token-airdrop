@@ -1478,20 +1478,129 @@
         // Enhanced Connect Wallet with Privy support
         async function connectWithPrivy() {
             try {
-                console.log('🔄 Attempting wallet connection...');
+                console.log('🔄 Attempting direct wallet connection...');
                 
                 // Track connection attempt
                 window.trackEvent('Wallet Connection Attempt', {
-                    method: 'enhanced',
+                    method: 'direct',
                     timestamp: new Date().toISOString()
                 });
                 
-                // Use direct wallet connection (proven working method)
-                await handleLogin();
+                // Check if we're on mobile and need to show wallet selection
+                const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+                
+                // If we have window.ethereum available, use direct connection
+                if (window.ethereum) {
+                    await handleDirectConnection();
+                } else if (isMobile) {
+                    // On mobile without injected wallet, show simple instruction
+                    alert('Please open this page in your wallet app (MetaMask, Trust Wallet, etc.) to connect');
+                } else {
+                    // On desktop, prompt to install wallet
+                    if (confirm('No wallet detected. Would you like to install MetaMask?')) {
+                        window.open('https://metamask.io/download/', '_blank');
+                    }
+                }
                 
             } catch (error) {
                 console.error('Wallet connection failed:', error);
                 alert('Connection failed: ' + error.message);
+            }
+        }
+
+        // Direct wallet connection without redirects
+        async function handleDirectConnection() {
+            try {
+                console.log('🔌 Starting direct wallet connection...');
+                
+                if (!window.ethereum) {
+                    throw new Error('No wallet detected');
+                }
+                
+                // Request account connection
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found');
+                }
+                
+                // Create provider with ethers if available
+                if (typeof ethers !== 'undefined') {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                } else {
+                    // Fallback without ethers
+                    provider = window.ethereum;
+                }
+                
+                const userAddress = accounts[0];
+                
+                // Set authentication state
+                isAuthenticated = true;
+                user = {
+                    wallet: { address: userAddress },
+                    id: userAddress
+                };
+                
+                console.log('✅ Wallet connected:', userAddress);
+                
+                // Check network and switch to HyperEVM if needed
+                await ensureHyperEVMNetwork();
+                
+                // Check eligibility
+                await checkEligibility(userAddress);
+                
+                // Update UI
+                updateUI();
+                
+                // Track successful connection
+                window.trackEvent('Wallet Connected', {
+                    address: userAddress.substring(0, 8) + '...',
+                    method: 'direct',
+                    timestamp: new Date().toISOString()
+                });
+                
+            } catch (error) {
+                console.error('Direct connection failed:', error);
+                
+                // Reset button state
+                const connectBtn = document.querySelector('.connect-btn');
+                if (connectBtn) {
+                    connectBtn.textContent = 'Connect Wallet';
+                    connectBtn.disabled = false;
+                }
+                
+                throw error;
+            }
+        }
+        
+        // Ensure we're on HyperEVM network
+        async function ensureHyperEVMNetwork() {
+            try {
+                const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+                
+                if (currentChainId !== '0x3E7') { // 999 in hex
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x3E7' }],
+                        });
+                    } catch (switchError) {
+                        // If network doesn't exist, add it
+                        if (switchError.code === 4902) {
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [HYPEREVM_CONFIG],
+                            });
+                        } else {
+                            console.error('Network switch failed:', switchError);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Network check failed:', error);
             }
         }
 
