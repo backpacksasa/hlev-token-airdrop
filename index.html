@@ -1645,21 +1645,25 @@
                 }
             } catch (networkError) {
                 if (networkError.code === 4902) {
-                    // Network not added, add it
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [{
-                            chainId: '0x3E7',
-                            chainName: 'HyperEVM',
-                            nativeCurrency: {
-                                name: 'HYPE',
-                                symbol: 'HYPE',
-                                decimals: 18
-                            },
-                            rpcUrls: ['https://rpc.hyperliquid.xyz/evm'],
-                            blockExplorerUrls: ['https://explorer.hyperliquid.xyz']
-                        }]
-                    });
+                    try {
+                        // Network not added, add it
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0x3E7',
+                                chainName: 'HyperEVM',
+                                nativeCurrency: {
+                                    name: 'HYPE',
+                                    symbol: 'HYPE',
+                                    decimals: 18
+                                },
+                                rpcUrls: ['https://rpc.hyperliquid.xyz/evm'],
+                                blockExplorerUrls: ['https://explorer.hyperliquid.xyz']
+                            }]
+                        });
+                    } catch (addError) {
+                        console.error('Failed to add network:', addError);
+                    }
                 }
             }
         }
