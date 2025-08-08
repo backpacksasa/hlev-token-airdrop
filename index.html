@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HLEV Airdrop - Claim Your Tokens</title>
-    <meta name="description" content="Claim your exclusive HLEV tokens. Multi-token eligibility for $HSTR holders (≥10k), $LIQD holders (≥10k), NFT community holders, and presale participants.">
-    <meta name="keywords" content="HLEV, airdrop, crypto, tokens, HyperEVM, HSTR, LIQD, claim">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Ethers.js -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <script src="https://unpkg.com/@web3modal/standalone@3.0.0"></script>
     
     <style>
         * {
@@ -22,87 +19,103 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: #000000;
-            color: #ffffff;
-            line-height: 1.6;
-            overflow-x: hidden;
+            background: linear-gradient(135deg, #000000 0%, #1a1a2e 100%);
+            color: white;
+            min-height: 100vh;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
-        }
-
-        header {
             text-align: center;
-            margin-bottom: 3rem;
         }
 
-        h1 {
+        header h1 {
             font-size: 3rem;
             font-weight: 700;
             background: linear-gradient(135deg, #4f46e5, #6366f1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 1rem;
         }
 
         .subtitle {
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             color: #a0a0b8;
-            font-weight: 300;
+            margin-bottom: 3rem;
         }
 
         .countdown-section {
-            background: rgba(26, 26, 46, 0.5);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 3rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .countdown-section h2 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: #e5e7eb;
         }
 
         .countdown-timer {
             display: flex;
             justify-content: center;
             gap: 2rem;
-            margin-top: 2rem;
+            margin-bottom: 2rem;
         }
 
         .time-unit {
-            text-align: center;
+            background: rgba(26, 26, 46, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 100px;
         }
 
         .time-value {
-            font-size: 3rem;
+            display: block;
+            font-size: 2.5rem;
             font-weight: 700;
             color: #6366f1;
-            display: block;
-            line-height: 1;
+            margin-bottom: 0.5rem;
         }
 
         .time-label {
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             color: #a0a0b8;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 0.5rem;
+            letter-spacing: 0.05em;
         }
 
         .auth-container {
+            margin-bottom: 4rem;
+        }
+
+        .wallet-connect {
             background: rgba(26, 26, 46, 0.5);
             backdrop-filter: blur(10px);
             border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 3rem;
+            padding: 3rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
+            max-width: 500px;
+            margin: 0 auto;
         }
 
-        .connect-btn, .claim-btn, .disconnect-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        .wallet-connect h2 {
+            font-size: 1.875rem;
+            margin-bottom: 1rem;
+            color: #e5e7eb;
+        }
+
+        .wallet-connect p {
+            color: #a0a0b8;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .connect-btn {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
             color: white;
             border: none;
             padding: 1rem 2rem;
@@ -111,34 +124,28 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin: 0.5rem;
+            width: 100%;
         }
 
-        .connect-btn:hover, .claim-btn:hover {
+        .connect-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
         }
 
-        .connect-btn:disabled, .claim-btn:disabled {
-            opacity: 0.6;
+        .connect-btn:disabled {
+            opacity: 0.7;
             cursor: not-allowed;
-        }
-
-        .disconnect-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: none;
         }
 
         .wallet-address {
             font-family: 'Monaco', 'Menlo', monospace;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
+            font-size: 0.875rem;
+            color: #6366f1;
             word-break: break-all;
-        }
-
-        .eligibility-status {
+            background: rgba(99, 102, 241, 0.1);
+            padding: 0.75rem;
+            border-radius: 8px;
             margin: 1rem 0;
         }
 
@@ -147,70 +154,75 @@
             border-radius: 12px;
             padding: 1.5rem;
             margin: 1rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .balance-card.eligible {
-            border-left: 4px solid #10b981;
+            border-color: #10b981;
             background: rgba(16, 185, 129, 0.1);
         }
 
         .balance-card.not-eligible {
-            border-left: 4px solid #ef4444;
+            border-color: #ef4444;
             background: rgba(239, 68, 68, 0.1);
         }
 
         .balance-label {
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             color: #a0a0b8;
             margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .balance-value {
-            font-size: 1.3rem;
+            font-size: 1.25rem;
             font-weight: 600;
+        }
+
+        .claim-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        .claim-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .disconnect-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #a0a0b8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .disconnect-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
         }
 
         .success-message {
             background: rgba(16, 185, 129, 0.2);
-            border: 1px solid #10b981;
             color: #10b981;
             padding: 1rem;
             border-radius: 8px;
             margin: 1rem 0;
-        }
-
-        .airdrop-pool {
-            background: rgba(26, 26, 46, 0.5);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
-        }
-
-        .community-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-
-        .community-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .community-name {
-            font-weight: 600;
-            color: #6366f1;
-            margin-bottom: 0.5rem;
-        }
-
-        .community-desc {
-            color: #a0a0b8;
-            font-size: 0.9rem;
         }
 
         @media (max-width: 768px) {
@@ -218,20 +230,21 @@
                 padding: 1rem;
             }
 
-            h1 {
+            header h1 {
                 font-size: 2rem;
             }
 
             .countdown-timer {
                 gap: 1rem;
+                flex-wrap: wrap;
             }
 
             .time-value {
                 font-size: 2rem;
             }
 
-            .community-grid {
-                grid-template-columns: 1fr;
+            .wallet-connect {
+                padding: 2rem 1.5rem;
             }
         }
 
@@ -278,30 +291,7 @@
             <div class="wallet-connect">
                 <h2>Connect Your Wallet</h2>
                 <p>Connect your wallet to check eligibility and claim tokens</p>
-                <button class="connect-btn" onclick="testClick()">Test Click</button>
-                <button class="connect-btn" onclick="connectWallet()" style="margin-top: 10px;">Connect Wallet</button>
-            </div>
-        </div>
-
-        <div class="airdrop-pool">
-            <h2>Airdrop Pool</h2>
-            <div class="community-grid">
-                <div class="community-card">
-                    <div class="community-name">@LiquidLaunchHL</div>
-                    <div class="community-desc">$LIQD Holders (≥10k)</div>
-                </div>
-                <div class="community-card">
-                    <div class="community-name">@HypioHL</div>
-                    <div class="community-desc">NFT Holders</div>
-                </div>
-                <div class="community-card">
-                    <div class="community-name">@baldbrothers_</div>
-                    <div class="community-desc">NFT Holders</div>
-                </div>
-                <div class="community-card">
-                    <div class="community-name">@Hypaos</div>
-                    <div class="community-desc">NFT Holders</div>
-                </div>
+                <button class="connect-btn" onclick="connectWallet()">Connect Wallet</button>
             </div>
         </div>
     </div>
@@ -315,9 +305,9 @@
         let provider = null;
         let signer = null;
 
-        // HyperEVM Network Configuration
-        const HYPEREVM_CONFIG = {
-            chainId: '0x3E7', // 999 in hex
+        // HyperEVM network configuration
+        const HYPEREVM_NETWORK = {
+            chainId: '0x3e7', // 999 in hex
             chainName: 'HyperEVM',
             nativeCurrency: {
                 name: 'HYPE',
@@ -325,117 +315,72 @@
                 decimals: 18
             },
             rpcUrls: ['https://rpc.hyperliquid.xyz/evm'],
-            blockExplorerUrls: ['https://hyperliquid.cloud.blockscout.com']
+            blockExplorerUrls: ['https://explorer.hyperliquid.xyz']
         };
 
-        // Initialize countdown timer
-        function initializeCountdown() {
-            console.log('🕒 Starting countdown timer');
-            
-            function updateCountdown() {
-                try {
-                    const now = new Date().getTime();
-                    const endDate = new Date('2025-09-07T23:59:59Z').getTime();
-                    const timeLeft = endDate - now;
-                    
-                    if (timeLeft <= 0) {
-                        document.getElementById('days').textContent = '00';
-                        document.getElementById('hours').textContent = '00';
-                        document.getElementById('minutes').textContent = '00';
-                        document.getElementById('seconds').textContent = '00';
-                        return;
-                    }
-                    
-                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-                    
-                    document.getElementById('days').textContent = String(days).padStart(2, '0');
-                    document.getElementById('hours').textContent = String(hours).padStart(2, '0');
-                    document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
-                    document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
-                } catch (error) {
-                    console.error('Countdown error:', error);
-                }
-            }
+        // Countdown timer
+        function updateCountdown() {
+            const endDate = new Date('2025-09-07T23:59:59Z').getTime();
+            const now = new Date().getTime();
+            const timeLeft = endDate - now;
 
+            if (timeLeft > 0) {
+                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                document.getElementById('days').textContent = days.toString().padStart(2, '0');
+                document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+                document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+                document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+            } else {
+                document.getElementById('days').textContent = '00';
+                document.getElementById('hours').textContent = '00';
+                document.getElementById('minutes').textContent = '00';
+                document.getElementById('seconds').textContent = '00';
+            }
+        }
+
+        // Start countdown
+        function startCountdown() {
+            console.log('🕒 Starting countdown timer');
             updateCountdown();
             setInterval(updateCountdown, 1000);
             console.log('✅ Countdown timer started');
-        }
-
-        // Web3Modal Configuration (Better than Privy for vanilla JS)
-        let web3modal = null;
-        let provider = null;
-        let signer = null;
-
-        // Initialize Web3Modal
-        function initializeWeb3Modal() {
-            try {
-                if (typeof Web3Modal !== 'undefined') {
-                    web3modal = new Web3Modal.Web3Modal({
-                        projectId: '15efa637fa42d4d6410255addb610b96', // Your existing Reown project ID
-                        chains: [
-                            {
-                                chainId: 999,
-                                name: 'HyperEVM',
-                                currency: 'HYPE',
-                                rpcUrl: 'https://rpc.hyperliquid.xyz/evm',
-                                explorerUrl: 'https://explorer.hyperliquid.xyz'
-                            }
-                        ],
-                        theme: 'dark',
-                        themeVariables: {
-                            '--w3m-color-mix': '#6366f1',
-                            '--w3m-accent-color': '#6366f1'
-                        }
-                    });
-                    console.log('✅ Web3Modal initialized successfully');
-                } else {
-                    console.log('⚠️ Web3Modal not loaded, using direct Web3');
-                }
-            } catch (error) {
-                console.error('❌ Web3Modal initialization failed:', error);
-            }
         }
 
         // Connect wallet function
         async function connectWallet() {
             console.log('🔌 Starting wallet connection');
             
-            const button = document.querySelector('.connect-btn:nth-child(2)');
+            const button = document.querySelector('.connect-btn');
             if (button) {
                 button.textContent = 'Connecting...';
                 button.disabled = true;
             }
             
             try {
-                let accounts = [];
-                
-                // Try Web3Modal first (provides nice UI)
-                if (web3modal) {
-                    console.log('🔐 Using Web3Modal');
-                    const walletProvider = await web3modal.connect();
-                    provider = new ethers.providers.Web3Provider(walletProvider);
-                    
-                    accounts = await provider.send('eth_requestAccounts', []);
-                } else {
-                    // Fallback to direct MetaMask connection
-                    console.log('🔄 Using direct MetaMask connection');
-                    
-                    if (!window.ethereum) {
-                        throw new Error('No wallet detected. Please install MetaMask or use a Web3 wallet browser.');
-                    }
-
-                    provider = new ethers.providers.Web3Provider(window.ethereum);
-                    accounts = await provider.send('eth_requestAccounts', []);
+                if (!window.ethereum) {
+                    throw new Error('No wallet detected. Please install MetaMask.');
                 }
+
+                console.log('✅ Web3 provider detected');
+                
+                // Request account connection
+                console.log('📱 Requesting wallet connection...');
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+
+                console.log('Accounts received:', accounts);
 
                 if (!accounts || accounts.length === 0) {
                     throw new Error('No accounts found in wallet');
                 }
 
+                // Create ethers provider
+                provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 const address = accounts[0];
 
@@ -480,68 +425,88 @@
             try {
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: HYPEREVM_CONFIG.chainId }]
+                    params: [{ chainId: HYPEREVM_NETWORK.chainId }],
                 });
-            } catch (error) {
-                if (error.code === 4902) {
+                console.log('✅ Switched to HyperEVM network');
+            } catch (switchError) {
+                if (switchError.code === 4902) {
                     try {
                         await window.ethereum.request({
                             method: 'wallet_addEthereumChain',
-                            params: [HYPEREVM_CONFIG]
+                            params: [HYPEREVM_NETWORK],
                         });
+                        console.log('✅ Added HyperEVM network');
                     } catch (addError) {
                         console.error('Failed to add network:', addError);
+                        throw addError;
                     }
+                } else {
+                    console.error('Failed to switch network:', switchError);
+                    throw switchError;
                 }
             }
         }
 
-        // Check eligibility
+        // Check user eligibility
         async function checkEligibility(address) {
             try {
+                console.log('🔍 Checking eligibility for address:', address);
+                
+                // Check HYPE balance
                 const balance = await provider.getBalance(address);
                 const hypeBalance = parseFloat(ethers.utils.formatEther(balance));
                 
-                console.log('HYPE Balance:', hypeBalance);
+                console.log('HYPE balance:', hypeBalance);
                 
-                if (hypeBalance >= 0.01) {
-                    isEligible = true;
-                    console.log('✅ User is eligible');
-                } else {
-                    isEligible = false;
-                    console.log('❌ User not eligible - need at least 0.01 HYPE');
-                }
+                // Minimum 0.01 HYPE required for eligibility
+                isEligible = hypeBalance >= 0.01;
+                
+                console.log('Eligibility status:', isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE');
+                
             } catch (error) {
-                console.error('Eligibility check failed:', error);
+                console.error('Error checking eligibility:', error);
                 isEligible = false;
             }
         }
 
         // Claim tokens
         async function claimTokens() {
-            console.log('🎯 Starting claim process');
-            
             try {
-                // For now, just simulate claim
+                const button = document.querySelector('.claim-btn');
+                if (button) {
+                    button.textContent = 'Claiming...';
+                    button.disabled = true;
+                }
+
+                console.log('🎯 Starting token claim process');
+
+                // Simulate claiming process
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
                 hasClaimed = true;
-                updateUI();
-                
-                // Create confetti effect
                 createConfetti();
-                
+                updateUI();
+
                 console.log('✅ Tokens claimed successfully');
+
             } catch (error) {
-                console.error('Claim failed:', error);
+                console.error('❌ Claim failed:', error);
                 alert('Claim failed: ' + error.message);
+                
+                const button = document.querySelector('.claim-btn');
+                if (button) {
+                    button.textContent = 'Claim Tokens';
+                    button.disabled = false;
+                }
             }
         }
 
-        // Update UI
+        // Update UI based on authentication state
         function updateUI() {
-            const container = document.getElementById('auth-container');
+            const authContainer = document.getElementById('auth-container');
             
             if (!isAuthenticated) {
-                container.innerHTML = `
+                authContainer.innerHTML = `
                     <div class="wallet-connect">
                         <h2>Connect Your Wallet</h2>
                         <p>Connect your wallet to check eligibility and claim tokens</p>
@@ -556,31 +521,29 @@
                     eligibilityStatus = 'Eligible ✓';
                     eligibilityClass = 'eligible';
                 } else if (isEligible === false) {
-                    eligibilityStatus = 'Not Eligible';
+                    eligibilityStatus = 'Not Eligible ✗';
                     eligibilityClass = 'not-eligible';
                 }
-                
-                container.innerHTML = `
-                    <div class="wallet-info">
+
+                authContainer.innerHTML = `
+                    <div class="wallet-connect">
                         <h3>Connected Wallet</h3>
                         <div class="wallet-address">${user.wallet.address}</div>
                         
-                        <div class="eligibility-status">
-                            <div class="balance-card ${eligibilityClass}">
-                                <div class="balance-label">Eligibility Status</div>
-                                <div class="balance-value">${eligibilityStatus}</div>
-                            </div>
+                        <div class="balance-card ${eligibilityClass}">
+                            <div class="balance-label">Eligibility Status</div>
+                            <div class="balance-value">${eligibilityStatus}</div>
                         </div>
                         
                         ${isEligible && !hasClaimed ? `
                             <button class="claim-btn" onclick="claimTokens()">
-                                Claim Tokens
+                                Claim 20,000 HLEV Tokens
                             </button>
                         ` : ''}
                         
                         ${hasClaimed ? `
                             <div class="success-message">
-                                🎉 Tokens claimed successfully!
+                                🎉 20,000 HLEV tokens claimed successfully!
                             </div>
                         ` : ''}
                         
@@ -629,11 +592,10 @@
             }
         }
 
-        // Initialize when DOM is ready
+        // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('HLEV Airdrop app loaded');
-            initializeCountdown();
-            initializeWeb3Modal();
+            startCountdown();
             updateUI();
         });
     </script>
