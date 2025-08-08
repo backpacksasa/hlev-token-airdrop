@@ -7,8 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Ethers.js from unpkg CDN -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <!-- Privy SDK - Web Integration -->
-    <script src="https://cdn.jsdelivr.net/npm/@privy-io/privy-js@0.11.0/dist/index.umd.js"></script>
+    <!-- Privy Web SDK -->
+    <script type="module">
+        // Import Privy Web SDK
+        import { PrivyProvider, useLogin, useWallets, useLogout } from 'https://esm.sh/@privy-io/react-auth@1.82.4';
+        window.PrivySDK = { PrivyProvider, useLogin, useWallets, useLogout };
+    </script>
+    <script src="https://unpkg.com/@privy-io/js-sdk@1.0.0/dist/index.js"></script>
     <!-- Vercel Analytics - Universal Integration -->
     <script type="module">
         // Import Vercel Analytics
@@ -1459,52 +1464,155 @@
 
 
 
-        // Simplified Privy Authentication Functions
+        // Real Privy Authentication Functions
+        let privyClient = null;
+        
         async function initializePrivy() {
             try {
                 console.log('🔄 Initializing Privy authentication...');
-                // Simple check if Privy is available
-                if (typeof window.Privy !== 'undefined' || typeof window.PrivySDK !== 'undefined') {
-                    console.log('✅ Privy SDK detected');
+                
+                // Wait for Privy SDK to load
+                await new Promise(resolve => {
+                    const checkPrivy = () => {
+                        if (window.Privy || window.PrivyClient) {
+                            resolve();
+                        } else {
+                            setTimeout(checkPrivy, 100);
+                        }
+                    };
+                    checkPrivy();
+                });
+                
+                // Initialize Privy client
+                if (window.Privy) {
+                    privyClient = new window.Privy({
+                        appId: PRIVY_APP_ID,
+                        config: {
+                            loginMethods: ['wallet'],
+                            appearance: {
+                                theme: 'dark',
+                                accentColor: '#6366f1'
+                            },
+                            supportedChains: [{
+                                id: 999,
+                                name: 'HyperEVM',
+                                network: 'hyperliquid',
+                                nativeCurrency: {
+                                    name: 'HYPE',
+                                    symbol: 'HYPE',
+                                    decimals: 18
+                                },
+                                rpcUrls: {
+                                    default: { http: ['https://rpc.hyperliquid.xyz/evm'] }
+                                }
+                            }]
+                        }
+                    });
+                    
+                    // Set up authentication listeners
+                    privyClient.onAuthStateChange((user, isAuthenticated) => {
+                        console.log('🔐 Privy auth state changed:', { user, isAuthenticated });
+                        handlePrivyAuthChange(user, isAuthenticated);
+                    });
+                    
+                    console.log('✅ Privy initialized successfully');
+                    return true;
+                    
+                } else if (window.PrivyClient) {
+                    // Alternative initialization
+                    privyClient = new window.PrivyClient(PRIVY_APP_ID);
+                    console.log('✅ Privy Client initialized');
+                    return true;
                 } else {
-                    console.log('📱 Privy SDK not loaded, using direct wallet connection');
+                    console.log('📱 Privy SDK not available');
+                    return false;
                 }
             } catch (error) {
                 console.error('Privy initialization error:', error);
-                console.log('📱 Using direct wallet connection');
+                console.log('📱 Falling back to direct wallet connection');
+                return false;
             }
         }
+        
+        // Handle Privy authentication state changes
+        function handlePrivyAuthChange(privyUser, authenticated) {
+            console.log('Handling Privy auth change:', { privyUser, authenticated });
+            
+            if (authenticated && privyUser) {
+                isAuthenticated = true;
+                user = privyUser;
+                
+                // Get wallet address from Privy user
+                const wallet = privyUser.linkedAccounts?.find(account => account.type === 'wallet');
+                if (wallet) {
+                    console.log('✅ Wallet connected via Privy:', wallet.address);
+                    checkEligibility(wallet.address);
+                } else if (privyUser.wallet?.address) {
+                    console.log('✅ Wallet connected via Privy:', privyUser.wallet.address);
+                    checkEligibility(privyUser.wallet.address);
+                }
+            } else {
+                isAuthenticated = false;
+                user = null;
+                isEligible = null;
+                hasClaimed = false;
+            }
+            
+            updateUI();
+        }
 
-        // Enhanced Connect Wallet with Privy support
+        // Enhanced Connect Wallet with Privy integration
         async function connectWithPrivy() {
             try {
-                console.log('🔄 Attempting direct wallet connection...');
+                console.log('🔄 Attempting Privy wallet connection...');
                 
                 // Track connection attempt
                 window.trackEvent('Wallet Connection Attempt', {
-                    method: 'direct',
+                    method: 'privy',
                     timestamp: new Date().toISOString()
                 });
                 
-                // Check if we're on mobile and need to show wallet selection
-                const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+                // Show connecting state
+                const connectBtn = document.querySelector('.connect-btn');
+                if (connectBtn) {
+                    connectBtn.textContent = 'Connecting...';
+                    connectBtn.disabled = true;
+                }
                 
-                // If we have window.ethereum available, use direct connection
-                if (window.ethereum) {
-                    await handleDirectConnection();
-                } else if (isMobile) {
-                    // On mobile without injected wallet, show simple instruction
-                    alert('Please open this page in your wallet app (MetaMask, Trust Wallet, etc.) to connect');
-                } else {
-                    // On desktop, prompt to install wallet
-                    if (confirm('No wallet detected. Would you like to install MetaMask?')) {
-                        window.open('https://metamask.io/download/', '_blank');
+                // Try Privy connection first
+                if (privyClient) {
+                    console.log('🔐 Using Privy authentication');
+                    
+                    try {
+                        // Attempt Privy login
+                        const result = await privyClient.login();
+                        console.log('Privy login result:', result);
+                        
+                        if (result && result.user) {
+                            console.log('✅ Privy login successful');
+                            handlePrivyAuthChange(result.user, true);
+                            return;
+                        }
+                    } catch (privyError) {
+                        console.log('Privy login failed, trying direct connection:', privyError);
                     }
                 }
                 
+                // Fallback to direct wallet connection
+                console.log('🔄 Falling back to direct wallet connection');
+                await handleDirectConnection();
+                
             } catch (error) {
-                console.error('Wallet connection failed:', error);
-                alert('Connection failed: ' + error.message);
+                console.error('All wallet connection methods failed:', error);
+                
+                // Reset button state
+                const connectBtn = document.querySelector('.connect-btn');
+                if (connectBtn) {
+                    connectBtn.textContent = 'Connect Wallet';
+                    connectBtn.disabled = false;
+                }
+                
+                alert('Connection failed. Please make sure you have a wallet installed (MetaMask, Trust Wallet, etc.)');
             }
         }
 
