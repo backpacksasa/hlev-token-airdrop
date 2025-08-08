@@ -10,7 +10,7 @@
     <!-- Ethers.js -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <!-- Web3Modal for multi-wallet support -->
-    <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+    <script src="https://unpkg.com/web3modal@1.9.12/dist/index.umd.js"></script>
     <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
     
     <style>
@@ -357,29 +357,37 @@
         let web3Modal = null;
 
         function initWeb3Modal() {
-            const providerOptions = {
-                walletconnect: {
-                    package: WalletConnectProvider,
-                    options: {
-                        infuraId: "15efa637fa42d4d6410255addb610b96"
+            try {
+                const providerOptions = {
+                    walletconnect: {
+                        package: WalletConnectProvider,
+                        options: {
+                            infuraId: "15efa637fa42d4d6410255addb610b96",
+                            rpc: {
+                                999: "https://rpc.hyperliquid.xyz/evm"
+                            }
+                        }
                     }
-                }
-            };
+                };
 
-            web3Modal = new Web3Modal({
-                network: "mainnet",
-                cacheProvider: true,
-                providerOptions,
-                theme: {
-                    background: "rgb(26, 26, 46)",
-                    main: "rgb(255, 255, 255)",
-                    secondary: "rgb(160, 160, 184)",
-                    border: "rgba(255, 255, 255, 0.1)",
-                    hover: "rgba(255, 255, 255, 0.05)"
-                }
-            });
+                web3Modal = new window.Web3Modal.default({
+                    network: "mainnet",
+                    cacheProvider: true,
+                    providerOptions,
+                    theme: {
+                        background: "rgb(26, 26, 46)",
+                        main: "rgb(255, 255, 255)",
+                        secondary: "rgb(160, 160, 184)",
+                        border: "rgba(255, 255, 255, 0.1)",
+                        hover: "rgba(255, 255, 255, 0.05)"
+                    }
+                });
 
-            console.log('✅ Web3Modal initialized with multi-wallet support');
+                console.log('✅ Web3Modal initialized with multi-wallet support');
+            } catch (error) {
+                console.error('❌ Web3Modal initialization failed:', error);
+                console.log('⚠️ Falling back to direct wallet connection');
+            }
         }
 
         // Connect wallet function with multi-wallet selection
@@ -393,9 +401,23 @@
             }
             
             try {
-                // Show multi-wallet selection modal
-                const web3Provider = await web3Modal.connect();
-                console.log('✅ Wallet provider selected');
+                let web3Provider;
+                
+                if (web3Modal) {
+                    // Show multi-wallet selection modal
+                    web3Provider = await web3Modal.connect();
+                    console.log('✅ Wallet provider selected via Web3Modal');
+                } else {
+                    // Fallback to direct MetaMask connection
+                    console.log('🔄 Using direct MetaMask connection');
+                    
+                    if (!window.ethereum) {
+                        throw new Error('No wallet detected. Please install MetaMask or use a Web3 wallet browser.');
+                    }
+                    
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    web3Provider = window.ethereum;
+                }
 
                 // Create ethers provider from selected wallet
                 provider = new ethers.providers.Web3Provider(web3Provider);
@@ -425,7 +447,7 @@
                 // Update UI
                 updateUI();
                 
-                console.log('✅ Multi-wallet connected successfully:', address);
+                console.log('✅ Wallet connected successfully:', address);
                 
             } catch (error) {
                 console.error('❌ Connection failed:', error);
