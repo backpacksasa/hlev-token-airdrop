@@ -277,7 +277,8 @@
             <div class="wallet-connect">
                 <h2>Connect Your Wallet</h2>
                 <p>Connect your wallet to check eligibility and claim tokens</p>
-                <button class="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+                <button class="connect-btn" onclick="testClick()">Test Click</button>
+                <button class="connect-btn" onclick="connectWallet()" style="margin-top: 10px;">Connect Wallet</button>
             </div>
         </div>
 
@@ -361,6 +362,12 @@
             updateCountdown();
             setInterval(updateCountdown, 1000);
             console.log('✅ Countdown timer started');
+        }
+
+        // Test function to verify JavaScript is working
+        function testClick() {
+            console.log('🧪 Test click working!');
+            alert('JavaScript is working! Click functions are responsive.');
         }
 
         // Connect wallet function
