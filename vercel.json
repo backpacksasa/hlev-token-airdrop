@@ -11,5 +11,8 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "VITE_PRIVY_APP_ID": "client-WY6PdZDym8VHN2rXvPc6s6I"
+  }
 }
