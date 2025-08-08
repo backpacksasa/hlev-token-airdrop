@@ -8,7 +8,7 @@
     <!-- Ethers.js from unpkg CDN -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <!-- Privy Web SDK - Direct Integration -->
-    <script src="https://unpkg.com/@privy-io/js@1.12.0/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@privy-io/js@1.12.0/dist/index.umd.js"></script>
     <!-- Vercel Analytics - Universal Integration -->
     <script type="module">
         // Import Vercel Analytics
@@ -563,6 +563,9 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('HLEV Airdrop app loaded');
             
+            // Start countdown timer immediately
+            initializeCountdown();
+            
             // Enhanced page load tracking
             if (window.trackEvent) {
                 window.trackEvent('HLEV Airdrop Loaded', {
@@ -655,37 +658,52 @@
             ]
         };
 
-        // Initialize countdown timer with fixed end date
+        // Working countdown timer with proper initialization
         function initializeCountdown() {
-            // Fixed end date - set this to your actual airdrop end date
-            // Using September 7, 2025 as example - change this to your preferred date
-            const endDate = new Date('2025-09-07T23:59:59Z'); // Fixed end date
+            console.log('🕒 Initializing countdown timer');
             
             function updateCountdown() {
-                const now = new Date().getTime();
-                const distance = endDate.getTime() - now;
-                
-                if (distance < 0) {
-                    document.getElementById('days').textContent = '00';
-                    document.getElementById('hours').textContent = '00';
-                    document.getElementById('minutes').textContent = '00';
-                    document.getElementById('seconds').textContent = '00';
-                    return;
+                try {
+                    const now = new Date().getTime();
+                    const endDate = new Date('2025-09-07T23:59:59Z').getTime();
+                    const timeLeft = endDate - now;
+                    
+                    if (timeLeft <= 0) {
+                        // Airdrop ended
+                        const elements = ['days', 'hours', 'minutes', 'seconds'];
+                        elements.forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) el.textContent = '00';
+                        });
+                        console.log('⏰ Airdrop countdown ended');
+                        return;
+                    }
+                    
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    
+                    // Safe element updates
+                    const daysEl = document.getElementById('days');
+                    const hoursEl = document.getElementById('hours');
+                    const minutesEl = document.getElementById('minutes');
+                    const secondsEl = document.getElementById('seconds');
+                    
+                    if (daysEl) daysEl.textContent = String(days).padStart(2, '0');
+                    if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+                    if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+                    if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
+                    
+                } catch (error) {
+                    console.error('Countdown error:', error);
                 }
-                
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                document.getElementById('days').textContent = String(days).padStart(2, '0');
-                document.getElementById('hours').textContent = String(hours).padStart(2, '0');
-                document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
-                document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
             }
 
+            // Start countdown immediately
             updateCountdown();
             setInterval(updateCountdown, 1000);
+            console.log('✅ Countdown timer started');
         }
 
         // Check real eligibility: 1 HYPE = 3M GEAR tokens
